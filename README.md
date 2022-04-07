@@ -33,3 +33,42 @@ msg_text = ''
 start_pos = 0
 msg_count = 0
 
+# separate into chunks of 50 emails in order to avoid sending limits
+for b in range(20):
+    
+    # open the email server connection
+    server = smtp.SMTP(host=smtp_host, port=smtp_port)
+    server.starttls()
+    server.login(user=user, password=password)
+
+    # create and send the message
+    for i in range(50):
+        # check to see if this is the final message, which has a slightly different range
+        if msg_count == 1000:
+            start_pos = (len(word_list)-final_msg_size)
+            msg_text = ' '.join(word_list[start_pos:])
+        else:
+            start_pos = msg_count * msg_size
+            msg_text = ' '.join(word_list[start_pos:start_pos + msg_size])
+
+        # create the email message headers and set the payload
+        msg = EmailMessage()
+        msg['From'] = fr_address
+        msg['To'] = to_address
+        msg['Subject'] = subject + str(msg_count+1)
+        msg.set_payload(msg_text)
+
+        msg_count += 1
+        
+        # open the email server and send the message
+        server.send_message(msg)
+
+        ''' delay each email by 1/2 second to space out the distribution
+            this 1/2 second delay may cause the emails to be delivered out-of-order
+            when some are slightly larger than others.
+        '''
+        time.sleep(0.5)
+      
+    # delay each batch by 60 seconds to avoid sending limits
+    time.sleep(60)
+    
